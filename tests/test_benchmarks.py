@@ -5,8 +5,18 @@ from typing import Any
 import pytest
 import torch
 
+from minimal_nn_competition.benchmarks.chess_eval.benchmark import (
+    BLACK_BETTER,
+    DRAW,
+    WHITE_BETTER,
+    ChessEvalBenchmark,
+    label_of,
+    material_of,
+    sample_dataset,
+)
 from minimal_nn_competition.benchmarks.fashion_mnist.benchmark import FashionMnistBenchmark
 from minimal_nn_competition.benchmarks.mnist.benchmark import MnistBenchmark
+from minimal_nn_competition.benchmarks.register import create_benchmark
 from minimal_nn_competition.benchmarks.snake import benchmark as snake_benchmark
 from minimal_nn_competition.benchmarks.snake.benchmark import SnakeBenchmark
 from minimal_nn_competition.model.entry import Submission, materialize_submission
@@ -326,3 +336,81 @@ def test_fashion_mnist_rejects_wrong_shape(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="Fashion-MNIST submissions"):
         FashionMnistBenchmark().load_submission(submission)
+
+
+def test_chess_eval_registers_by_name() -> None:
+    assert create_benchmark("chess-eval").name == "chess-eval"
+    assert ChessEvalBenchmark().seeds == tuple(range(20))
+
+
+def test_chess_eval_material_sign_known_vectors() -> None:
+    assert material_of((0,) * 64) == 0
+    assert label_of((0,) * 64) == DRAW
+    queen = (5,) + (0,) * 63
+    assert material_of(queen) == 9
+    assert label_of(queen) == WHITE_BETTER
+    black_rook = (-4,) + (0,) * 63
+    assert material_of(black_rook) == -5
+    assert label_of(black_rook) == BLACK_BETTER
+    trade = (1,) + (-1,) + (0,) * 62
+    assert material_of(trade) == 0
+    assert label_of(trade) == DRAW
+
+
+def test_chess_eval_evaluate_dummy_returns_tuple(tmp_path: Path) -> None:
+    assert sample_dataset(0) == sample_dataset(0)
+    assert sample_dataset(0) != sample_dataset(1)
+    inputs, labels = sample_dataset(0)
+    assert len(inputs) == len(labels) == 512
+    position = tuple(int(round(value * 6.0)) for value in inputs[0])
+    assert labels[0] == label_of(position)
+    submission = _write_submission(
+        tmp_path,
+        {
+            "benchmark": "chess-eval",
+            "architecture": "linear",
+            "input_size": 64,
+            "output_size": 3,
+        },
+        {"weight": torch.zeros((3, 64)), "bias": torch.zeros(3)},
+    )
+    score, score_std, passed, details = ChessEvalBenchmark(seeds=(0, 1)).evaluate(
+        materialize_submission(submission)
+    )
+    assert isinstance(score, float)
+    assert isinstance(score_std, float)
+    assert isinstance(passed, bool)
+    assert 0.0 <= score <= 1.0
+    assert score_std >= 0.0
+    assert passed is False
+    assert details["seeds"] == 2
+    assert len(details["seed_accuracies"]) == 2
+
+
+def test_chess_eval_rejects_wrong_shape(tmp_path: Path) -> None:
+    submission = _write_submission(
+        tmp_path,
+        {
+            "benchmark": "chess-eval",
+            "architecture": "linear",
+            "input_size": 8,
+            "output_size": 3,
+        },
+        {"weight": torch.zeros((3, 8)), "bias": torch.zeros(3)},
+    )
+    with pytest.raises(ValueError, match="input_size 64"):
+        ChessEvalBenchmark().load_submission(submission)
+    second = tmp_path / "second"
+    second.mkdir()
+    bad_outputs = _write_submission(
+        second,
+        {
+            "benchmark": "chess-eval",
+            "architecture": "linear",
+            "input_size": 64,
+            "output_size": 2,
+        },
+        {"weight": torch.zeros((2, 64)), "bias": torch.zeros(2)},
+    )
+    with pytest.raises(ValueError, match="output_size 3"):
+        ChessEvalBenchmark().load_submission(bad_outputs)

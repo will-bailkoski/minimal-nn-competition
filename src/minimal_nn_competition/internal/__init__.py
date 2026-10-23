@@ -27,6 +27,7 @@ _FASHION_FILES = (
     f"{PACKAGE}/examples/fashion_mnist_submission.py",
 )
 _SNAKE_FILES = (f"{PACKAGE}/benchmarks/snake", f"{PACKAGE}/examples/snake_submission.py")
+_CHESS_FILES = (f"{PACKAGE}/benchmarks/chess_eval",)
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,16 @@ SCOPES = (
         ),
     ),
     Scope(
+        "chess-eval",
+        _CHESS_FILES,
+        (
+            "tests/test_benchmarks.py::test_chess_eval_registers_by_name",
+            "tests/test_benchmarks.py::test_chess_eval_material_sign_known_vectors",
+            "tests/test_benchmarks.py::test_chess_eval_evaluate_dummy_returns_tuple",
+            "tests/test_benchmarks.py::test_chess_eval_rejects_wrong_shape",
+        ),
+    ),
+    Scope(
         "core",
         (PACKAGE,),
         (
@@ -128,7 +139,9 @@ def expand_scope_tests(scope, collected):
 
 def scope_files(scope, root):
     """Resolve a scope's source prefixes to Python files under ``root``."""
-    excluded = [root / source for source in _MNIST_FILES + _FASHION_FILES + _SNAKE_FILES]
+    excluded = [
+        root / source for source in _MNIST_FILES + _FASHION_FILES + _SNAKE_FILES + _CHESS_FILES
+    ]
     files = []
     for source in scope.sources:
         path = root / source

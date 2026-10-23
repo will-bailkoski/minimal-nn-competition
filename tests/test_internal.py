@@ -286,6 +286,7 @@ def test_internal_cli(tmp_path: Path) -> None:
     assert main(["internal", "--root", str(root), "--output", str(output)]) == 0
     results = load_internal_results(output)
     assert {result.scope for result in results} == {
+        "chess-eval",
         "core",
         "fashion-mnist",
         "mnist",

@@ -9,6 +9,7 @@ BenchmarkFactory = Callable[..., Any]
 
 
 def _factories() -> dict[str, BenchmarkFactory]:
+    from minimal_nn_competition.benchmarks.chess_eval.benchmark import ChessEvalBenchmark
     from minimal_nn_competition.benchmarks.fashion_mnist.benchmark import (
         FashionMnistBenchmark,
     )
@@ -16,6 +17,7 @@ def _factories() -> dict[str, BenchmarkFactory]:
     from minimal_nn_competition.benchmarks.snake.benchmark import SnakeBenchmark
 
     return {
+        "chess-eval": ChessEvalBenchmark,
         "fashion-mnist": FashionMnistBenchmark,
         "mnist": MnistBenchmark,
         "snake": SnakeBenchmark,
